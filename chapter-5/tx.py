@@ -19,16 +19,16 @@ class TxFetcher:
     cache = {}
 
     @classmethod
-    def get_url(cls, testnet=False):
-        if testnet:
-            return 'https://blockstream.info/testnet/api/'
+    def get_url(cls, testnet4=False):
+        if testnet4:
+            return 'https://mempool.space/testnet4/api/'
         else:
-            return 'https://blockstream.info/api/'
+            return 'https://mempool.space/api/'
 
     @classmethod
-    def fetch(cls, tx_id, testnet=False, fresh=False):
+    def fetch(cls, tx_id, testnet4=False, fresh=False):
         if fresh or (tx_id not in cls.cache):
-            url = '{}/tx/{}/hex'.format(cls.get_url(testnet), tx_id)
+            url = '{}/tx/{}/hex'.format(cls.get_url(testnet4), tx_id)
             response = requests.get(url)
             try:
                 raw = bytes.fromhex(response.text.strip())
@@ -36,15 +36,15 @@ class TxFetcher:
                 raise ValueError('unexpected response: {}'.format(response.text))
             if raw[4] == 0:
                 raw = raw[:4] + raw[6:]
-                tx = Tx.parse(BytesIO(raw), testnet=testnet)
+                tx = Tx.parse(BytesIO(raw), testnet4=testnet4)
                 tx.locktime = little_endian_to_int(raw[-4:])
             else:
-                tx = Tx.parse(BytesIO(raw), testnet=testnet)
+                tx = Tx.parse(BytesIO(raw), testnet4=testnet4)
             if tx.id() != tx_id:  # <1>
                 raise ValueError('not the same id: {} vs {}'.format(tx.id(), 
                                   tx_id))
             cls.cache[tx_id] = tx
-        cls.cache[tx_id].testnet = testnet
+        cls.cache[tx_id].testnet4 = testnet4
         return cls.cache[tx_id]
     # end::source7[]
 
@@ -72,12 +72,12 @@ class TxFetcher:
 # tag::source1[]
 class Tx:
 
-    def __init__(self, version, tx_ins, tx_outs, locktime, testnet=False):
+    def __init__(self, version, tx_ins, tx_outs, locktime, testnet4=False):
         self.version = version
         self.tx_ins = tx_ins  # <1>
         self.tx_outs = tx_outs
         self.locktime = locktime
-        self.testnet = testnet  # <2>
+        self.testnet4 = testnet4  # <2>
 
     def __repr__(self):
         tx_ins = ''
@@ -104,7 +104,7 @@ class Tx:
     # end::source1[]
 
     @classmethod
-    def parse(cls, s, testnet=False):
+    def parse(cls, s, testnet4=False):
         '''Takes a byte stream and parses the transaction at the start
         return a Tx object
         '''
@@ -182,21 +182,21 @@ class TxIn:
     # end::source5[]
 
     # tag::source8[]
-    def fetch_tx(self, testnet=False):
-        return TxFetcher.fetch(self.prev_tx.hex(), testnet=testnet)
+    def fetch_tx(self, testnet4=False):
+        return TxFetcher.fetch(self.prev_tx.hex(), testnet4=testnet4)
 
-    def value(self, testnet=False):
+    def value(self, testnet4=False):
         '''Get the output value by looking up the tx hash.
         Returns the amount in satoshi.
         '''
-        tx = self.fetch_tx(testnet=testnet)
+        tx = self.fetch_tx(testnet4=testnet4)
         return tx.tx_outs[self.prev_index].amount
 
-    def script_pubkey(self, testnet=False):
+    def script_pubkey(self, testnet4=False):
         '''Get the ScriptPubKey by looking up the tx hash.
         Returns a Script object.
         '''
-        tx = self.fetch_tx(testnet=testnet)
+        tx = self.fetch_tx(testnet4=testnet4)
         return tx.tx_outs[self.prev_index].script_pubkey
     # end::source8[]
 
